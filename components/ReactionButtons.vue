@@ -1,6 +1,7 @@
 <template>
     <span v-if="$auth.loggedIn()" >
-        <a v-for="reaction of reactions" :key="reaction.emoji" class="reaction-button" :class="{ selected: reaction.reactions.find(r=>r.user == $auth.user().name), loading }" @click="react(post.id, reaction.emoji)">{{ reaction.emoji }} {{ reaction.reactions.length }}</a>
+        <a v-for="reaction of reactions" :key="reaction.emoji" class="reaction-button" :class="{ selected: reaction.reactions.find(r=>r.user == $auth.user().name), loading }" @click="react(post.id, reaction.emoji)" v-if="reaction.reactions.length > 0">{{ reaction.emoji }} {{ reaction.reactions.length }}</a>
+        <a class="reaction-button">😀+</a>
     </span>
 </template>
 
@@ -12,6 +13,11 @@ export default {
       reactions: [],
       loading: false
     };
+  },
+  watch: {
+    reactions () {
+      this.reactions.sort((a, b) => a.reactions.length - b.reactions.length);
+    }
   },
   methods: {
     async react(id, emoji) {
