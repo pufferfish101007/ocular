@@ -15,10 +15,7 @@
           @on-sort-change="unchangedRows = JSON.parse(JSON.stringify(rows))"
           >
           <template v-slot:table-row="{ row, column, formattedRow }">
-            <span v-if="column.field === 'name'">
-              {{ row.name }} <a :href="`/dashboard?user=${row.name}`" target="_blank">dashboard ↗</a> <a :href="`https://scratch.mit.edu/users/${row.name}/`" target="_blank">scratch ↗</a>
-            </span>
-            <span v-else-if="column.field === 'status'">
+            <span v-if="column.field === 'status'">
               <div
                 contenteditable
                 class="status-edit"
@@ -34,6 +31,9 @@
             <span v-else-if="column.field === 'banned'">
               <input type="checkbox" :checked="row.banned" @change="setBanned(row.originalIndex, $event.target.checked)" />
               {{ !!row.banned }}
+            </span>
+            <span v-else-if="column.field === 'name'">
+              {{ row.name }} <a :href="`/dashboard?user=${row.name}`" target="_blank">dashboard ↗</a> <a :href="`https://scratch.mit.edu/users/${row.name}/`" target="_blank">scratch ↗</a>
             </span>
             <span v-else>
               {{ formattedRow[column.field] }}
@@ -56,8 +56,19 @@
     compare: compareBool
   }] = [vgtDefaultType, vgtBoolType];
 
+  let uuid = l => {
+    return Array(l).fill(null).map(x => "abcdefg hijklmnopqrstu vwxyzABCD EFGHIJKLM NOPQRSTUV WXYZ  123456 7890-_"[Math.floor(Math.random() * 46)]).join("").trim();
+  };
+  let e = Array(100).fill(0).map(u => ({
+    name: uuid(16),
+    status: uuid(300),
+    color: uuid(6),
+    banned: Boolean(Math.floor(Math.random() * 2)),
+    _id: uuid(36),
+    admin: Boolean(Math.floor(Math.random() * 2)),
+  }));
   export default {
-    middleware: 'admin',
+    // middleware: 'admin',
     head: {
       title: 'user list'
     },
@@ -102,30 +113,38 @@
           },
           {
             label: 'updated by',
-            field: 'meta.updatedBy'
+            field: 'meta.updatedBy',
           },
         ],
-        rows: [],
-        unchangedRows: [],
-        changed: []
+        rows: e,
+        unchangedRows: JSON.parse(JSON.stringify(e)),
+        changed: Array(100).fill(false)
       };
     },
-    async fetch() {
-      let res = await fetch(`${process.env.backendURL}/api/users`, {
-        method: "GET",
-        headers: {
-          Authorization: this.$auth.token(),
-        },
-      });
-      let data = await res.json();
-      this.rows = data;
-      this.changed = Array.from({
-        length: data.length
-      }).fill(false);
-      this.unchangedRows = JSON.parse(JSON.stringify(this.rows));
-    },
+    /* async fetch() {
+    /*let res = await fetch(`${process.env.backendURL}/api/users`, {
+      method: "GET",
+      headers: {
+        Authorization: this.$auth.token(),
+      },
+    });
+    let data = await res.json();*/
+    /*
+    let data = Array(100).fill(0).map(u => ({
+      name: uuid(16),
+      status: uiid(100),
+      color: uuid(6),
+      banned: Boolean(Math.floor(Math.random() * 2)),
+      _id: uuid(36),
+      admin: false,
+    }));
+    this.rows = data;
+    this.changed = Array.from({ length: data.length }).fill(false);
+   //alert(JSON.stringify(data));
+*/
     methods: {
       sortWithoutChangingWheneverYouChangeAnything(x, y, col, rowx, rowy) {
+        // alert(col.field);
         return (col.type === "boolean" ? compareBool: compareString)(this.unchangedRows.find(x => x._id === rowx._id)[col.field], this.unchangedRows.find(y => y._id === rowy._id)[col.field]);
       },
       updateChanged (index, value) {
@@ -153,10 +172,10 @@
         await this.$store.dispatch("auth/login", this.$auth.token()); // refresh user details
         if (this.$auth.user()) {
           for (const index in this.changed) {
-            // for each index of users that have had their details changed
-            if (!this.changed(index)) continue;
-            let user = this.rows[index]; // this is the actual user object
-            let res = await fetch(// updare user
+            if (!this.changed[index]) continue;
+            let user = this.rows[index];
+            alert(user.name);
+            let res = await fetch(
               `${process.env.backendURL}/api/user/${user.name}`,
               {
                 method: "PUT",
@@ -181,13 +200,12 @@
             if (data) {
               if (data.error) {
                 alert(data.error);
-                this.$nuxt.refresh();
-                return;
+                break;
               }
             }
           }
           alert("User(s) updated");
-          this.$nuxt.refresh(); // refresh table
+          this.$nuxt.refresh();
         } else {
           this.$router.push({
             path: '/login'
